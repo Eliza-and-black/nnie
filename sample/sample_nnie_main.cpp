@@ -153,7 +153,28 @@ void yolov3DetectDemo(const char *model_path, const char *image_path)
 
     if (is_nms)
     {
+        //if single-label-prediction
         cv::dnn::NMSBoxes(boxes, confidences, conf_threshold, nms_threshold, indices);
+        /***@ymd_add start***/
+        //if multiple-label-prediction, which means after nms,  one box might correspond to more than one label. Thus, what we need to do is to find the label not in nms'result, then add its id to indices.
+        std::vector<cv::Rect>result_boxes;
+        int indices_size = indices.size();
+        for (int i = 0; i < indices_size; ++i)
+        {
+            int idx = indices[i];
+            for (int j = 0; j < boxes.size(); ++j)
+            {
+                if(boxes[idx]==boxes[j])
+                {
+                    std::vector<int>::iterator it=std::find(indices.begin(),indices.end(),j);
+                    if (it==indices.end())
+                    {   //j not in indices.
+                        indices.push_back(j);  
+                    }
+                }
+            }
+        }
+        /***@ymd_add end***/
     }
     else
     {

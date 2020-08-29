@@ -116,18 +116,6 @@ extern "C"
                         // CV_LOG_INFO(NULL, "cx:" << cx << " cy:" << cy);
                         // CV_LOG_INFO(NULL, "box:" << x << " " << y << " " << w << " " << h << " c:" << confidence
                         //                          << " index:" << index);
-                        std::vector<float> classes(num_classes);
-                        for (int i = 0; i < num_classes; ++i)
-                        {
-                            classes[i] = feature.data[cx + (cy * feature.width) + (channel + 5 + i) * feature.height * feature.width];
-                        }
-                        Softmax(classes);
-                        auto max_itr = std::max_element(classes.begin(), classes.end());
-                        int index = static_cast<int>(max_itr - classes.begin());
-                        if (num_classes > 1)
-                        {
-                            confidence = confidence * classes[index];
-                        }
 
                         int center_x = (int)(x * img_width);
                         int center_y = (int)(y * img_height);
@@ -140,9 +128,38 @@ extern "C"
                         //                    << " index:" << index
                         //                    << " p:" << classes[index]);
 
+                        std::vector<float> classes(num_classes);
+                        
+                        // if single-label-prediction
+                        for (int i = 0; i < num_classes; ++i)
+                        {
+                            classes[i] = feature.data[cx + (cy * feature.width) + (channel + 5 + i) * feature.height * feature.width];
+                        }
+                        Softmax(classes);  //softmax makes each class mutually exclusive ,but darknet-yolov3 uses sigmoid which support one-box corresponds to multiple labels.
+                        auto max_itr = std::max_element(classes.begin(), classes.end());
+                        int index = static_cast<int>(max_itr - classes.begin());
+                        if (num_classes > 1)
+                        {
+                            confidence = confidence * classes[index];
+                        }
                         ids.push_back(index);
                         boxes.emplace_back(left, top, width, height);
                         confidences.push_back(confidence);
+
+                        /***@ymd_add start***/
+                        /***if multiple-label-prediction,uncomment below and comment single-label-prediction above***/
+                        // for (int i = 0; i < num_classes; ++i)
+                        // {
+                        //     classes[i] = Sigmoid(feature.data[cx + (cy * feature.width) + (channel + 5 + i) * feature.height * feature.width]);
+                        //     if (classes[i] > conf_threshold)
+                        //     {
+                        //         ids.push_back(i);
+                        //         boxes.emplace_back(left, top, width, height);
+                        //         confidences.push_back(confidence*classes[i]);
+                        //     }
+                        // }
+                        /***@ymd_add end ***/
+
                     }
                 }
             }
